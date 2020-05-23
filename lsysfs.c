@@ -20,14 +20,15 @@
 #include <errno.h>
 
 // ... //
+#define LIMIT 256
 
-char dir_list[ 256 ][ 256 ];
+char dir_list[ LIMIT ][ LIMIT ];
 int curr_dir_idx = -1;
 
-char files_list[ 256 ][ 256 ];
+char files_list[ LIMIT ][ LIMIT ];
 int curr_file_idx = -1;
 
-char files_content[ 256 ][ 256 ];
+char files_content[ LIMIT ][ LIMIT ];
 int curr_file_content_idx = -1;
 
 void add_dir( const char *dir_name )
@@ -86,6 +87,31 @@ void write_to_file( const char *path, const char *new_content )
 		return;
 		
 	strcpy( files_content[ file_idx ], new_content ); 
+}
+
+int remove_file( const int file_idx){
+	for ( int idx = file_idx; idx < LIMIT-1; idx++ ){
+		strcpy(files_list[idx], files_list[idx+1]);
+	}
+	curr_file_idx--;
+	for ( int idx = file_idx; idx < LIMIT-1; idx++ ){
+		strcpy(files_content[idx], files_content[idx+1]);
+	}
+	curr_file_content_idx--;
+	return 0;
+}
+
+int remove_dir( const char* path){
+	path++; // Eliminating "/" in the path
+	int idx;
+	for ( idx = 0; idx < LIMIT; idx++ )
+		if ( strcmp( path, dir_list[ idx ] ) == 0 )
+			break;
+	for ( idx; idx < LIMIT-1; idx++ ){
+		strcpy(dir_list[idx], dir_list[idx+1]);
+	}
+	curr_dir_idx--;
+	return 0;
 }
 
 // ... //
@@ -170,6 +196,25 @@ static int do_write( const char *path, const char *buffer, size_t size, off_t of
 	return size;
 }
 
+static int do_unlink( const char *path)
+{
+	if(is_file( path ))
+	{
+		int file_idx = get_file_index( path );
+		if ( file_idx == -1 ) // No such file
+			return -1;
+		return remove_file(file_idx);
+	}
+	return -1;
+}
+
+static int do_rmdir( const char *path)
+{
+	if(is_dir( path ))
+		return remove_dir(path);
+	return -1;
+}
+
 static struct fuse_operations operations = {
     .getattr	= do_getattr,
     .readdir	= do_readdir,
@@ -177,6 +222,8 @@ static struct fuse_operations operations = {
     .mkdir		= do_mkdir,
     .mknod		= do_mknod,
     .write		= do_write,
+	.unlink		= do_unlink,
+	.rmdir		= do_rmdir,
 };
 
 int main( int argc, char *argv[] )
