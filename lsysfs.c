@@ -217,13 +217,13 @@ static int do_rmdir( const char *path)
 
 static struct fuse_operations operations = {
     .getattr	= do_getattr,
-    .readdir	= do_readdir,
-    .read		= do_read,
-    .mkdir		= do_mkdir,
-    .mknod		= do_mknod,
-    .write		= do_write,
+	.mknod		= do_mknod,
+	.mkdir		= do_mkdir,
 	.unlink		= do_unlink,
 	.rmdir		= do_rmdir,
+	.read		= do_read,
+    .write		= do_write,
+    .readdir	= do_readdir,
 };
 
 int main( int argc, char *argv[] )
