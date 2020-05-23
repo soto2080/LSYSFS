@@ -21,15 +21,28 @@
 
 // ... //
 #define LIMIT 256
+struct timearray
+{
+  timespec time[LIMIT];
+};
 
-char dir_list[ LIMIT ][ LIMIT ];
+
+char dir_list[ /* Index Limit */ LIMIT ][ /* Dir Name */ LIMIT ];
 int curr_dir_idx = -1;
 
-char files_list[ LIMIT ][ LIMIT ];
+//TODO: Change to STL container for big directory support
+char files_list[ /* Index Limit */ LIMIT ][ /* File Name */ LIMIT ];
 int curr_file_idx = -1;
 
-char files_content[ LIMIT ][ LIMIT ];
+//TODO: Change to STL container for Large file support
+char files_content[ /* Index Limit */ LIMIT ][ /* Content Size */ LIMIT ];
 int curr_file_content_idx = -1;
+
+// For Create/Modify/Access time respectively
+struct timearray dirs_time[3];
+struct timearray files_time[3];
+
+
 
 void add_dir( const char *dir_name )
 {
@@ -215,6 +228,12 @@ static int do_rmdir( const char *path)
 	return -1;
 }
 
+static int do_utimens( const char *path, const struct timespec *time)
+{
+	// Only cease the error of stime
+	return 0;
+}
+
 static struct fuse_operations operations = {
     .getattr	= do_getattr,
 	.mknod		= do_mknod,
@@ -224,6 +243,7 @@ static struct fuse_operations operations = {
 	.read		= do_read,
     .write		= do_write,
     .readdir	= do_readdir,
+	.utimens	= do_utimens,
 };
 
 int main( int argc, char *argv[] )
