@@ -158,6 +158,9 @@ int remove_dir( const char* path){
 			break;
 	for ( idx; idx < LIMIT-1; idx++ ){
 		strcpy(dir_list[idx], dir_list[idx+1]);
+		dirs_time[ATIME].time[idx] = dirs_time[ATIME].time[idx+1];
+		dirs_time[CTIME].time[idx] = dirs_time[CTIME].time[idx+1];
+		dirs_time[MTIME].time[idx] = dirs_time[MTIME].time[idx+1];
 	}
 	curr_dir_idx--;
 	return 0;
@@ -169,12 +172,16 @@ static int do_getattr( const char *path, struct stat *st )
 {
 	st->st_uid = getuid(); // The owner of the file/directory is the user who mounted the filesystem
 	st->st_gid = getgid(); // The group of the file/directory is the same as the group of the user who mounted the filesystem
-	st->st_atime = time( NULL ); // The last "a"ccess of the file/directory is right now
-	st->st_mtime = time( NULL ); // The last "m"odification of the file/directory is right now
-	st->st_ctime = time( NULL ); // The last "c"hange of the file/directory is right now
+	// st->st_atime = time( NULL ); // The last "a"ccess of the file/directory is right now
+	// st->st_mtime = time( NULL ); // The last "m"odification of the file/directory is right now
+	// st->st_ctime = time( NULL ); // The last "c"hange of the file/directory is right now
 	
 	if ( strcmp( path, "/" ) == 0 || is_dir( path ) == 1 )
 	{
+		int idx = get_dir_index(path);
+		st->st_atim = dirs_time[ATIME].time[idx];
+		st->st_mtim = dirs_time[MTIME].time[idx];
+		st->st_ctim = dirs_time[CTIME].time[idx];
 		st->st_mode = S_IFDIR | 0755;
 		st->st_nlink = 2; // Why "two" hardlinks instead of "one"? The answer is here: http://unix.stackexchange.com/a/101536
 	}
