@@ -252,6 +252,14 @@ static int do_rmdir( const char *path)
 
 static int do_utimens( const char *path, const struct timespec tv[2])
 {
+	if(is_file( path ))
+	{
+		int file_idx = get_file_index( path );
+		if ( file_idx == -1 ) // No such file
+			return -1;
+		files_time[ATIME].time[file_idx].tv_sec = tv[0].tv_sec;
+		files_time[MTIME].time[file_idx].tv_sec = tv[1].tv_sec;
+	}
 	// Only cease the error of stime
 	return 0;
 }
