@@ -55,6 +55,13 @@ void add_dir( const char *dir_name )
 {
 	curr_dir_idx++;
 	strcpy( dir_list[ curr_dir_idx ], dir_name );
+
+	// Init dir timestamp when crating
+	struct timespec now;
+	timespec_get(&now, TIME_UTC);
+	dirs_time[ATIME].time[curr_dir_idx] = now;
+	dirs_time[CTIME].time[curr_dir_idx] = now;
+	dirs_time[MTIME].time[curr_dir_idx] = now;
 }
 
 int is_dir( const char *path )
@@ -107,6 +114,17 @@ int get_file_index( const char *path )
 	return -1;
 }
 
+int get_dir_index( const char *path )
+{
+	path++; // Eliminating "/" in the path
+	
+	for ( int curr_idx = 0; curr_idx < LIMIT; curr_idx++ )
+		if ( strcmp( path, dir_list[ curr_idx ] ) == 0 )
+			return curr_idx;
+	
+	return -1;
+}
+
 void write_to_file( const char *path, const char *new_content )
 {
 	int file_idx = get_file_index( path );
@@ -122,11 +140,12 @@ void write_to_file( const char *path, const char *new_content )
 int remove_file( const int file_idx){
 	for ( int idx = file_idx; idx < LIMIT-1; idx++ ){
 		strcpy(files_list[idx], files_list[idx+1]);
+		strcpy(files_content[idx], files_content[idx+1]);
+		files_time[ATIME].time[idx] = files_time[ATIME].time[idx+1];
+		files_time[CTIME].time[idx] = files_time[CTIME].time[idx+1];
+		files_time[MTIME].time[idx] = files_time[MTIME].time[idx+1];
 	}
 	curr_file_idx--;
-	for ( int idx = file_idx; idx < LIMIT-1; idx++ ){
-		strcpy(files_content[idx], files_content[idx+1]);
-	}
 	curr_file_content_idx--;
 	return 0;
 }
@@ -262,9 +281,19 @@ static int do_utimens( const char *path, const struct timespec tv[2])
 
 		struct timespec now;
 		timespec_get(&now, TIME_UTC);
-		files_time[ATIME].time[curr_file_idx] = now;
-		files_time[CTIME].time[curr_file_idx] = now;
-		files_time[MTIME].time[curr_file_idx] = now;
+		files_time[ATIME].time[file_idx] = now;
+		files_time[CTIME].time[file_idx] = now;
+		files_time[MTIME].time[file_idx] = now;
+	}else if(is_dir( path )){
+		int dir_idx = get_dir_index(path);
+		if ( dir_idx == -1 ) // No such dir
+			return -1;
+
+		struct timespec now;
+		timespec_get(&now, TIME_UTC);
+		dirs_time[ATIME].time[dir_idx] = now;
+		dirs_time[CTIME].time[dir_idx] = now;
+		dirs_time[MTIME].time[dir_idx] = now;
 	}
 	// Only cease the error of stime
 	return 0;
