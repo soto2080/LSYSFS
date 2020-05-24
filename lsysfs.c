@@ -23,22 +23,29 @@
 #define LIMIT 256
 struct timearray
 {
-  timespec time[LIMIT];
+  timespec time[/* File Index */ LIMIT];
 };
 
 
-char dir_list[ /* Index Limit */ LIMIT ][ /* Dir Name */ LIMIT ];
+char dir_list[ /* Dir Index */ LIMIT ][ /* Dir Name */ LIMIT ];
 int curr_dir_idx = -1;
 
 //TODO: Change to STL container for big directory support
-char files_list[ /* Index Limit */ LIMIT ][ /* File Name */ LIMIT ];
+char files_list[ /* File Index */ LIMIT ][ /* File Name */ LIMIT ];
 int curr_file_idx = -1;
 
 //TODO: Change to STL container for Large file support
-char files_content[ /* Index Limit */ LIMIT ][ /* Content Size */ LIMIT ];
+char files_content[ /* File Index */ LIMIT ][ /* Content */ LIMIT ];
 int curr_file_content_idx = -1;
 
-// For Create/Modify/Access time respectively
+enum TIMETYPE
+{
+	ATIME,
+	CTIME,
+	MTIME
+};
+
+// For atime/ctime/mtime time respectively
 struct timearray dirs_time[3];
 struct timearray files_time[3];
 
@@ -65,9 +72,15 @@ void add_file( const char *filename )
 {
 	curr_file_idx++;
 	strcpy( files_list[ curr_file_idx ], filename );
-	
+
 	curr_file_content_idx++;
 	strcpy( files_content[ curr_file_content_idx ], "" );
+
+		
+	// Init file timestamp when crating
+	files_time[ATIME].time[curr_file_idx].tv_sec = time( NULL );
+	files_time[CTIME].time[curr_file_idx].tv_sec = time( NULL );
+	files_time[MTIME].time[curr_file_idx].tv_sec = time( NULL );
 }
 
 int is_file( const char *path )
@@ -95,11 +108,13 @@ int get_file_index( const char *path )
 void write_to_file( const char *path, const char *new_content )
 {
 	int file_idx = get_file_index( path );
-	
 	if ( file_idx == -1 ) // No such file
 		return;
 		
 	strcpy( files_content[ file_idx ], new_content ); 
+
+	// The last "m"odification of the file is right now
+	files_time[MTIME].time[file_idx].tv_sec = time( NULL );
 }
 
 int remove_file( const int file_idx){
@@ -135,6 +150,7 @@ static int do_getattr( const char *path, struct stat *st )
 	st->st_gid = getgid(); // The group of the file/directory is the same as the group of the user who mounted the filesystem
 	st->st_atime = time( NULL ); // The last "a"ccess of the file/directory is right now
 	st->st_mtime = time( NULL ); // The last "m"odification of the file/directory is right now
+	st->st_ctime = time( NULL ); // The last "c"hange of the file/directory is right now
 	
 	if ( strcmp( path, "/" ) == 0 || is_dir( path ) == 1 )
 	{
@@ -143,6 +159,11 @@ static int do_getattr( const char *path, struct stat *st )
 	}
 	else if ( is_file( path ) == 1 )
 	{
+		int idx = get_file_index(path);
+		st->st_atime = files_time[ATIME].time[idx].tv_sec;
+		st->st_mtime = files_time[MTIME].time[idx].tv_sec;
+		st->st_ctime = files_time[CTIME].time[idx].tv_sec;
+
 		st->st_mode = S_IFREG | 0644;
 		st->st_nlink = 1;
 		st->st_size = 1024;
@@ -179,6 +200,9 @@ static int do_read( const char *path, char *buffer, size_t size, off_t offset, s
 	if ( file_idx == -1 )
 		return -1;
 	
+	// The last "a"ccess of the file is right now
+	files_time[ATIME].time[file_idx].tv_sec = time( NULL );
+
 	char *content = files_content[ file_idx ];
 	
 	memcpy( buffer, content + offset, size );
@@ -198,14 +222,12 @@ static int do_mknod( const char *path, mode_t mode, dev_t rdev )
 {
 	path++;
 	add_file( path );
-	
 	return 0;
 }
 
 static int do_write( const char *path, const char *buffer, size_t size, off_t offset, struct fuse_file_info *info )
 {
 	write_to_file( path, buffer );
-	
 	return size;
 }
 
@@ -228,7 +250,7 @@ static int do_rmdir( const char *path)
 	return -1;
 }
 
-static int do_utimens( const char *path, const struct timespec *time)
+static int do_utimens( const char *path, const struct timespec tv[2])
 {
 	// Only cease the error of stime
 	return 0;
