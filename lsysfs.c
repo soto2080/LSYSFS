@@ -78,9 +78,11 @@ void add_file( const char *filename )
 
 		
 	// Init file timestamp when crating
-	files_time[ATIME].time[curr_file_idx].tv_sec = time( NULL );
-	files_time[CTIME].time[curr_file_idx].tv_sec = time( NULL );
-	files_time[MTIME].time[curr_file_idx].tv_sec = time( NULL );
+	struct timespec now;
+	timespec_get(&now, TIME_UTC);
+	files_time[ATIME].time[curr_file_idx] = now;
+	files_time[CTIME].time[curr_file_idx] = now;
+	files_time[MTIME].time[curr_file_idx] = now;
 }
 
 int is_file( const char *path )
@@ -114,7 +116,7 @@ void write_to_file( const char *path, const char *new_content )
 	strcpy( files_content[ file_idx ], new_content ); 
 
 	// The last "m"odification of the file is right now
-	files_time[MTIME].time[file_idx].tv_sec = time( NULL );
+	timespec_get(&files_time[MTIME].time[curr_file_idx], TIME_UTC);
 }
 
 int remove_file( const int file_idx){
@@ -160,9 +162,9 @@ static int do_getattr( const char *path, struct stat *st )
 	else if ( is_file( path ) == 1 )
 	{
 		int idx = get_file_index(path);
-		st->st_atime = files_time[ATIME].time[idx].tv_sec;
-		st->st_mtime = files_time[MTIME].time[idx].tv_sec;
-		st->st_ctime = files_time[CTIME].time[idx].tv_sec;
+		st->st_atim = files_time[ATIME].time[idx];
+		st->st_mtim = files_time[MTIME].time[idx];
+		st->st_ctim = files_time[CTIME].time[idx];
 
 		st->st_mode = S_IFREG | 0644;
 		st->st_nlink = 1;
@@ -201,7 +203,7 @@ static int do_read( const char *path, char *buffer, size_t size, off_t offset, s
 		return -1;
 	
 	// The last "a"ccess of the file is right now
-	files_time[ATIME].time[file_idx].tv_sec = time( NULL );
+	timespec_get(&files_time[ATIME].time[curr_file_idx], TIME_UTC);
 
 	char *content = files_content[ file_idx ];
 	
@@ -257,8 +259,12 @@ static int do_utimens( const char *path, const struct timespec tv[2])
 		int file_idx = get_file_index( path );
 		if ( file_idx == -1 ) // No such file
 			return -1;
-		files_time[ATIME].time[file_idx].tv_sec = tv[0].tv_sec;
-		files_time[MTIME].time[file_idx].tv_sec = tv[1].tv_sec;
+
+		struct timespec now;
+		timespec_get(&now, TIME_UTC);
+		files_time[ATIME].time[curr_file_idx] = now;
+		files_time[CTIME].time[curr_file_idx] = now;
+		files_time[MTIME].time[curr_file_idx] = now;
 	}
 	// Only cease the error of stime
 	return 0;
