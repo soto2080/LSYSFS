@@ -1,4 +1,4 @@
-COMPILER = g++
+COMPILER = gcc
 FILESYSTEM_FILES = lsysfs.c
 
 build: $(FILESYSTEM_FILES)
