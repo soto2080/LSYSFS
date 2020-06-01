@@ -10,6 +10,7 @@
  
 #define FUSE_USE_VERSION 30
 
+
 #include <fuse.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -23,7 +24,7 @@
 #define LIMIT 256
 struct timearray
 {
-  timespec time[/* File Index */ LIMIT];
+  struct timespec time[/* File Index */ LIMIT];
 };
 
 
